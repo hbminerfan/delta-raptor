@@ -74,7 +74,7 @@ for s in strats:
         print("  [FAIL] bot_name outside ownership namespace — organizer deploy will be refused")
         ok = False
     exp = _slugify(s.name)
-    d = (REPO / "agents/delta_raptor/strategies" / exp).is_dir()
+    d = (REPO / "agents/delta_raptor/loops" / exp).is_dir()
     ok &= d
     print(f"  [{'OK' if d else 'FAIL'}] folder '{exp}' matches slugified name")
 

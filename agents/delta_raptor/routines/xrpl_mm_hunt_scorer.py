@@ -87,7 +87,7 @@ class Config(BaseModel):
         default=100.0, description="Harvest live USD that a nest hop may move"
     )
     curious_surge_pct: float = Field(
-        default=50.0,
+        default=300.0,
         description="Leave core when a rotation pair's own hourly volume is up this % or more",
     )
     parked_pair: str = Field(
@@ -179,7 +179,7 @@ def allocate_capital(
     dominance: float = 3.0,
     base_weight: float = 50.0,
     core_pair: str = "RLUSD-XRP",
-    curious_surge_pct: float = 50.0,
+    curious_surge_pct: float = 300.0,
     parked_pair: str | None = None,
 ) -> list[dict]:
     """Park the live perch on one nest.
@@ -224,7 +224,7 @@ async def _pin_hunt(text: str) -> str:
             ("Mode", mark_of(rows, "hunting_mode")),
         ],
         heading="HUNT / NEST",
-        blurb="Own hourly surge ≥50% hops. Fade → home. Idle cash never flies.",
+        blurb="Own hourly surge ≥300% hops (rare). Fade → home. Idle cash never flies.",
     )
     return text
 

@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, ".")
 from config_manager import get_config_manager
 
-# From agents/delta_raptor/strategies/rlusd_xrp_maker/strategy.md +
+# From agents/delta_raptor/loops/rlusd_xrp_maker/loop.md +
 # deploy skill Phase 3 overrides.
 STRATEGY_CONFIG = {
     "id": "rlusd-xrp-maker",

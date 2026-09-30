@@ -5,10 +5,11 @@ Drop-in Builders Cup entry. **Does not modify Condor engine or any other agent.*
 ```
 agents/delta_raptor/          # copy this folder into the organizer Condor repo
   AGENT.md                    # BRAIN — identity, why, risk philosophy
-  strategies/rlusd_xrp_maker/
-    strategy.md               # HANDS — tick playbook, issuers, call shapes
+  loops/rlusd_xrp_maker/
+    loop.md                   # HANDS — tick playbook, issuers, call shapes
     shutdown.md
   routines/                   # deterministic math (no LLM)
+  controllers/                # delta_raptor_pmm — copy into Hummingbot API
   skills/xrpl_mm_deploy/
   tests/                      # unit tests + validate_agent.py
   scripts/                    # optional live planner check
@@ -25,9 +26,12 @@ Official `agents/xrpl_market_maker/` is a **different** upstream agent. Leave it
    503 on place.
 3. **Condor web dashboard → Delta Raptor → RLUSD XRP Maker → Start New Session.**
    Agent chat is consult only; it does not start the tick loop.
-4. Harvest is the default. Cup `$100` / `$800` are **ceilings**. The planner
-   sizes to the live XRPL purse (~20%). A small organizer wallet is valid.
-5. Override `agent_key` in `AGENT.md` or the session picker if their model
+4. Copy `controllers/delta_raptor_pmm.py` into the Hummingbot API
+   `bots/controllers/market_making/`. It requotes every 5 min, or early on a
+   > 0.5% price drift checked every 60s — in code, no LLM.
+5. Race is the default: the planner quotes the full live XRPL purse up to the
+   `$800` ceiling. A small organizer wallet is valid.
+6. Override `agent_key` in `AGENT.md` or the session picker if their model
    roster differs. The playbook does not depend on a specific vendor.
 
 
@@ -49,7 +53,7 @@ uv run pytest agents/delta_raptor/tests/ -q
 | File | Role | What lives here |
 |---|---|---|
 | `AGENT.md` | Brain | Who / why / philosophy / architecture. **No tick procedure.** |
-| `strategy.md` | Hands | Every-tick steps, issuers, routine configs, sizes, errors. |
+| `loop.md` | Hands | Every-tick steps, issuers, routine configs, sizes, errors. |
 | `routines/*.py` | Hands (math) | Quote / hunt / rebalance verdicts. No orders. |
 
 The LLM applies **one** routine verdict per tick. It never invents a price.

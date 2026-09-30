@@ -1,9 +1,9 @@
 ---
 name: RLUSD XRP Maker
 description: >-
-  Tick playbook for Delta Raptor: start 100% on RLUSD-XRP, harvest $100 live /
-  $700 idle by default. Hop to a rotation nest when *that pair's* hourly volume
-  is up ≥ 50%. Fade → home. Convert leftovers on a whitelist bridge first.
+  Tick playbook for Delta Raptor: race mode by default — the full $800
+  envelope quotes RLUSD-XRP, requoted every 5 min or early on a > 0.5% price
+  drift (coded, no LLM). Hop only on a ≥ 300% own hourly surge (rare by design).
 agent_key: null
 skills:
 - xrpl_mm_deploy
@@ -17,7 +17,10 @@ default_config:
   reference_connector: binance_perpetual
   reference_pair: XRP-USDT
   levels_per_side: 3
-  executor_refresh_time: 30
+  executor_refresh_time: 300
+  controller_name: delta_raptor_pmm
+  drift_check_interval: 60
+  drift_threshold_pct: 0.005
   skip_rebalance: true
   adverse_k: 1.0
   use_vol_clock: true
@@ -37,9 +40,9 @@ default_config:
   widen_distance_pct: 1.0
   quote_mode: top_of_book
   top_of_book_improve_pct: 0.01
-  hunting_mode: harvest
+  hunting_mode: race
   toehold_quote: 100
-  curious_surge_pct: 50
+  curious_surge_pct: 300
   parked_pair: RLUSD-XRP
   hedge_enabled: false
   hedge_connector: binance_perpetual
@@ -49,7 +52,7 @@ default_config:
     max_open_executors: 8
     max_drawdown_pct: 10
     shutdown_drawdown_pct: 20
-default_trading_context: 'Trade RLUSD-XRP on xrpl; hop on own hourly surge ≥50%; convert then quote; reference binance_perpetual XRP-USDT'
+default_trading_context: 'Trade RLUSD-XRP on xrpl; stay on RLUSD-XRP; hop only on own hourly surge ≥300%; convert then quote; reference binance_perpetual XRP-USDT'
 created_by: 0
 created_at: '2026-07-28T00:00:00Z'
 ---
@@ -91,12 +94,13 @@ namespace `delta_raptor-rlusd_xrp_maker` (do not use `rlusd-xrp-maker`).
   Planner floor uses the **latter** in controller mode.
 - `bot_mode: bot` + `bot_name: delta_raptor-rlusd_xrp_maker` ⇒ controller mode
   inside the ownership namespace. Do not clear `bot_name`.
-- First tick, if no bot by that name: deploy `pmm_simple` (see Guardrails /
+- First tick, if no bot by that name: deploy `delta_raptor_pmm` (see Guardrails /
   `xrpl_mm_deploy` skill). Fall back to executors only after a real controller
   failure — then journal why. Do **not** clear `bot_name` to pick executor mode
   unless that failure is recorded.
-- Harvest live size comes from the planner (`controller_total_amount_quote`),
-  not from `total_amount_quote: 800` in this file. That 800 is a ceiling.
+- Live size comes from the planner (`controller_total_amount_quote`). Race (the
+  Cup default) quotes the full observed purse up to the `total_amount_quote: 800`
+  ceiling; harvest quotes only the toehold.
 
 ## Startup guard — notSynced
 
@@ -137,8 +141,9 @@ manage_routines(action="run", name="xrpl_mm_hunt_scorer",
 
 - **Startup / no surge: 100% RLUSD-XRP.** `total_amount_quote=0` on every other pair.
 - **CURIOUS hop** when a *rotation* pair's own hourly `volume_change_pct` ≥
-  `curious_surge_pct` (default **50**). RLUSD having more tape does **not** veto.
-  Live perch only (harvest `$100`). Idle stays off.
+  `curious_surge_pct` (default **300** — deliberately hard to trigger: RLUSD-XRP is
+  the only active, liquid book, so the desk should almost always stay home).
+  RLUSD having more tape does **not** veto.
 - **HOME** next hour if that surge is gone. Back to RLUSD-XRP.
 - **CONVERT before quoting the new nest.** One LIMIT this tick on the whitelist
   bridge, then quote next hour. Example: RLUSD-XRP → XRP-USDC → **BUY USDC on
@@ -250,7 +255,7 @@ Execution failures → `category="execution"`.
 - If available XRP cannot cover reserve + a BUY, harvest **SELLs RLUSD** it already holds
   (one-sided seed). Do not BUY-blind into negative available XRP.
 - `hold: true` → **HOLD**. Do not upsert a controller.
-- **Never upsert `pmm_simple.total_amount_quote` above planner `controller_total_amount_quote`.**
+- **Never upsert `delta_raptor_pmm.total_amount_quote` above planner `controller_total_amount_quote`.**
 - Race live = min(envelope, observed purse). Organizer smoke stays **harvest**.
 
 ## Guardrails
@@ -259,9 +264,16 @@ Execution failures → `category="execution"`.
 - Prices = planner top-of-book (0.01% better than best bid/ask). Controller
   reference = **book mid** + `controller_top_of_book_spreads`.
 - Keep `skip_rebalance: true` on the controller (agent owns rebalance).
-- `pmm_simple` only (no `pmm_dynamic` — XRPL has no candles).
-  Override: `executor_refresh_time=30`, `skip_rebalance=true`, `leverage=1`,
+- `delta_raptor_pmm` only — ships in `agents/delta_raptor/controllers/`; copy it into
+  the Hummingbot API `bots/controllers/market_making/`. It is `pmm_simple` plus a
+  coded drift check (no `pmm_dynamic` — XRPL has no candles).
+  Set: `executor_refresh_time=300`, `drift_check_interval=60`,
+  `drift_threshold_pct=0.005`, `buy_amounts_pct` / `sell_amounts_pct` explicit (e.g.
+  `100` — null crashes the controller), `skip_rebalance=true`, `leverage=1`,
   triple-barrier fields `null`.
+- Requote cadence is code, not you: every 300s on the timer, and early whenever a
+  resting order sits > 0.5% from the current quote price (checked every 60s).
+  Do not retune the controller just to chase price.
 - Retunes update **both** controller stores. Executors pass `controller_id="{agent_id}"`.
 - Declare `max_global_drawdown_quote` on every deploy.
 

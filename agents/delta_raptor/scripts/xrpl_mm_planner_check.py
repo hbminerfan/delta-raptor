@@ -36,7 +36,7 @@ ISSUERS = {
 }
 
 # Mirror the strategy's default_config (agents/delta_raptor/
-# strategies/rlusd_xrp_maker/strategy.md).
+# loops/rlusd_xrp_maker/loop.md).
 STRATEGY_DEFAULTS = {
     "xrpl_pair": "RLUSD-XRP",
     "reference_connector": "binance_perpetual",

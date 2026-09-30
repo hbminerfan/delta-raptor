@@ -141,8 +141,8 @@ class TestAllocateCapital:
         assert alloc == {"RLUSD-XRP": 800.0, "XRP-USDC": 0.0}
 
     def test_exactly_three_x_is_full_shift(self):
-        # XRP-USDC +100 (150) vs core 0 (50): 150 >= 3x50 -> fly to XRP-USDC
-        scored = self._scored(self._signal("RLUSD-XRP"), self._signal("XRP-USDC", vol=100.0))
+        # XRP-USDC +350% clears the 300% curious bar -> fly to XRP-USDC
+        scored = self._scored(self._signal("RLUSD-XRP"), self._signal("XRP-USDC", vol=350.0))
         alloc = {a["pair"]: a["capital_quote"] for a in allocate_capital(scored, 800.0)}
         assert alloc == {"RLUSD-XRP": 0.0, "XRP-USDC": 800.0}
 
@@ -162,7 +162,7 @@ class TestAllocateCapital:
         assert alloc["RLUSD-XRP"] == 800.0
 
     def test_rotation_own_surge_hops_even_when_core_also_printed(self):
-        scored = self._scored(self._signal("RLUSD-XRP", vol=20.0), self._signal("XRP-USDC", vol=60.0))
+        scored = self._scored(self._signal("RLUSD-XRP", vol=20.0), self._signal("XRP-USDC", vol=350.0))
         alloc = {a["pair"]: a["capital_quote"] for a in allocate_capital(scored, 800.0)}
         assert alloc == {"RLUSD-XRP": 0.0, "XRP-USDC": 800.0}
 
@@ -171,8 +171,14 @@ class TestAllocateCapital:
         alloc = {a["pair"]: a["capital_quote"] for a in allocate_capital(scored, 800.0)}
         assert alloc == {"RLUSD-XRP": 800.0, "XRP-USDC": 0.0}
 
-    def test_harvest_hop_moves_toehold_not_wallet(self):
+    def test_default_bar_keeps_100pct_surge_home(self):
+        # 300% default: a +100% rotation surge is not enough to leave RLUSD-XRP
         scored = self._scored(self._signal("RLUSD-XRP"), self._signal("XRP-USDC", vol=100.0))
+        alloc = {a["pair"]: a["capital_quote"] for a in allocate_capital(scored, 800.0)}
+        assert alloc == {"RLUSD-XRP": 800.0, "XRP-USDC": 0.0}
+
+    def test_harvest_hop_moves_toehold_not_wallet(self):
+        scored = self._scored(self._signal("RLUSD-XRP"), self._signal("XRP-USDC", vol=350.0))
         from agents.delta_raptor.routines._xrpl_mm_perch import compose_perch
 
         live = compose_perch("harvest", wallet=800, toehold=100).live
@@ -193,4 +199,4 @@ class TestConfig:
         assert c.fill_rate_ref == pytest.approx(1 / 60)
         assert c.hunting_mode == "harvest"
         assert c.toehold_quote == 100.0
-        assert c.curious_surge_pct == 50.0
+        assert c.curious_surge_pct == 300.0

@@ -10,7 +10,7 @@ source: agent:delta_raptor
 
 # XRPL Maker Deploy
 
-Default path: **controller mode** (`pmm_simple`). Fall back to executor mode only after a
+Default path: **controller mode** (`delta_raptor_pmm`). Fall back to executor mode only after a
 real controller failure (schema reject, deploy/status error, or no on-ledger orders).
 
 ## Phase 1 — Preflight
@@ -53,19 +53,23 @@ stale data, not opportunity.
 
 ## Phase 3 — Deploy (controller first)
 
-`pmm_simple` only. Set `leverage=1`; leave `stop_loss`/`take_profit`/`time_limit`/
+`delta_raptor_pmm` only (copy `agents/delta_raptor/controllers/delta_raptor_pmm.py` into
+the Hummingbot API `bots/controllers/market_making/` first). Set `leverage=1`; leave `stop_loss`/`take_profit`/`time_limit`/
 `trailing_stop` `null`.
 
-**Override these four defaults:**
+**Set these fields:**
 
 | Field | Default | Set to |
 |---|---|---|
-| `executor_refresh_time` | `300` | `30` (from config) |
+| `executor_refresh_time` | `300` | `300` (5-min timer, from config) |
+| `drift_check_interval` | `60` | `60` (coded check, no LLM) |
+| `drift_threshold_pct` | `0.005` | `0.005` (requote early on > 0.5% drift) |
+| `buy_amounts_pct` / `sell_amounts_pct` | `null` | `100` each — null crashes the controller |
 | `skip_rebalance` | `false` | `true` |
 | `buy_spreads` / `sell_spreads` | `0.01,0.02` | planner `controller_spreads` (fractions) |
-| `total_amount_quote` | `100` | planner `controller_total_amount_quote` (XRP on RLUSD-XRP). Harvest: live perch only — never the $800 wallet. |
+| `total_amount_quote` | `100` | planner `controller_total_amount_quote` (XRP on RLUSD-XRP). Race: full observed purse up to $800. Harvest: toehold only. |
 
-`pmm_simple` centres on XRPL mid, not the CEX reference — if divergence is routinely
+The controller centres on XRPL mid, not the CEX reference — if divergence is routinely
 wide, recommend executor mode instead of deploying.
 
 Two stores — update both when retuning later:
