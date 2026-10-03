@@ -278,8 +278,8 @@ class TestConfig:
         assert c.amm_asset2_issuer == ""
         assert c.amm_asset2_currency == "RLUSD"
         assert c.hunting_mode == "harvest"
-        assert c.wallet_ceiling_quote == 800.0
-        assert c.toehold_quote == 100.0
+        assert c.wallet_ceiling_quote == 240.0
+        assert c.toehold_quote == 80.0
 
     def test_requote_override(self):
         c = Config(requote_interval_sec=30)

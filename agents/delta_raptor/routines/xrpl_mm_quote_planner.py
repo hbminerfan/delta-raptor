@@ -94,10 +94,10 @@ class Config(BaseModel):
         description="race = Mode 1 whole envelope; harvest = Mode 2 toehold + idle cash",
     )
     wallet_ceiling_quote: float = Field(
-        default=800.0, description="Wallet ceiling in USD. Not live book size in harvest."
+        default=240.0, description="P&L sleeve ceiling in USD (dual-arm). Not live book size in harvest."
     )
     toehold_quote: float = Field(
-        default=100.0, description="Harvest live USD. Spike widens this, not the wallet."
+        default=80.0, description="Harvest live USD. Spike widens this, not the wallet."
     )
     inv_sellable_usd: float = Field(
         default=0.0,
@@ -304,7 +304,7 @@ async def _pin_quote(text: str, pair: str = "") -> str:
             ("Hold", mark_of(rows, "hold")),
         ],
         heading="PERCH / BOOK",
-        blurb="Size to the observed purse. Cup $100/$800 are ceilings.",
+        blurb="Size to the observed purse. Dual-arm toehold $80 / sleeve $240 are ceilings.",
     )
     return text
 

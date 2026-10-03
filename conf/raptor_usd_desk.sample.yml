@@ -1,0 +1,32 @@
+# Sample Hummingbot controller config — Delta Raptor VOLUME arm
+# Organizer funding: ~$560 (70% of $800 entry). P&L arm is separate (~$240 XRPL).
+#
+# Copy into your Hummingbot bots/controllers conf tree and adjust connector/pair
+# to the live USD1 (or stable) market on Binance.
+
+controller_name: raptor_usd_desk
+controller_type: generic
+
+# Account / market — set to the organizer's connected Binance spot markets
+connector_name: binance
+trading_pair: USD1-USDT   # replace with the live zero/low-fee stable pair in use
+
+# Capital intent (documentation + soft ceiling for ops)
+# Soft target notional for this desk ≈ 560 USDT of the $800 entry
+total_amount_quote: 560
+
+# Desk behaviour (defaults align with dual-arm volume sleeve)
+ladder_steps_usd:
+  - 25
+  - 40
+maker_timeout_s: 7
+# catch-up / skew fields: keep controller defaults unless venue requires otherwise
+
+# Risk
+desk_paused: false
+desk_winding_down: false
+
+# Notes for operators:
+# - Do NOT fund this desk with the XRPL P&L wallet.
+# - Leave ~$240 on XRPL for delta_raptor / rlusd_xrp_maker (harvest, toehold ~$80).
+# - See ORGANIZER_CAPITAL.md at repo root.

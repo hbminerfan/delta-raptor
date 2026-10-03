@@ -11,9 +11,9 @@ Two hunting modes — same bird, different appetite:
               stays idle. Hunt still flies the toehold (not the idle pile).
               A spike widens the toehold — it does not rest the envelope.
 
-Cup numbers (``envelope`` $800, ``toehold`` $100) are **ceilings**. Organizer
+Dual-arm ceilings (``envelope`` $240, ``toehold`` $80); Cup was $800/$100. Organizer
 and smoke wallets are smaller: live size shrinks to the purse. A $85 book
-does not pretend it is a $800 race.
+does not pretend it is a $800 race (volume is raptor_usd_desk).
 
 Do not mix the modes in one deploy.
 """
@@ -136,8 +136,8 @@ def xrpl_purse(
 
 def compose_perch(
     mode: str | None,
-    wallet: float = 800.0,
-    toehold: float = 100.0,
+    wallet: float = 240.0,
+    toehold: float = 80.0,
     inv_sellable_usd: float = 0.0,
     race_levels: int = 3,
     envelope: float | None = None,

@@ -1,22 +1,23 @@
 ---
 name: RLUSD XRP Maker
 description: >-
-  Tick playbook for Delta Raptor: race mode by default — the full $800
-  envelope quotes RLUSD-XRP, requoted every 5 min or early on a > 0.5% price
-  drift (coded, no LLM). Hop only on a ≥ 300% own hourly surge (rare by design).
+  Tick playbook for Delta Raptor P&L arm (dual-arm race). ~$240 XRPL harvest
+  on RLUSD-XRP — patient toehold MM, no full-envelope volume race. Volume arm
+  is separate Binance USD1 raptor_usd_desk (~$560). Hop only on ≥300% own
+  hourly surge (rare). Requote every 5 min or on >0.5% drift (coded).
 agent_key: null
 skills:
 - xrpl_mm_deploy
 default_config:
   frequency_sec: 300
   execution_mode: loop
-  total_amount_quote: 800
+  total_amount_quote: 240
   bot_mode: bot
   bot_name: delta_raptor-rlusd_xrp_maker
   xrpl_pair: RLUSD-XRP
   reference_connector: binance_perpetual
   reference_pair: XRP-USDT
-  levels_per_side: 3
+  levels_per_side: 2
   executor_refresh_time: 300
   controller_name: delta_raptor_pmm
   drift_check_interval: 60
@@ -30,38 +31,68 @@ default_config:
   inventory_band_pct: 1
   rebalance_enabled: true
   max_rebalance_cost_bps: 25
-  max_rebalance_amount_quote: 50
+  max_rebalance_amount_quote: 25
   rebalance_progressive_frac: 0.5
-  total_capital_quote: 800
+  total_capital_quote: 240
   min_share_pct: 0
   full_shift_dominance: 3.0
-  volume_weight: 1.0
+  volume_weight: 0.5
   widen_enabled: true
   widen_distance_pct: 1.0
   quote_mode: top_of_book
   top_of_book_improve_pct: 0.01
-  hunting_mode: race
-  toehold_quote: 100
+  hunting_mode: harvest
+  toehold_quote: 80
   curious_surge_pct: 300
   parked_pair: RLUSD-XRP
   hedge_enabled: false
   hedge_connector: binance_perpetual
   hedge_pair: XRP-USDT
+  dual_arm: true
+  pnl_arm_usd: 240
+  volume_arm_usd: 560
+  race_envelope_usd: 800
+  volume_controller: raptor_usd_desk
   risk_limits:
-    max_position_size_quote: 800
-    max_open_executors: 8
-    max_drawdown_pct: 10
+    max_position_size_quote: 240
+    max_open_executors: 6
+    max_drawdown_pct: 12
     shutdown_drawdown_pct: 20
-default_trading_context: 'Trade RLUSD-XRP on xrpl; stay on RLUSD-XRP; hop only on own hourly surge ≥300%; convert then quote; reference binance_perpetual XRP-USDT'
+default_trading_context: >-
+  P&L arm (~$240 of $800). Trade RLUSD-XRP on xrpl in harvest mode (toehold
+  ~$80, idle off). Do NOT race the full envelope for volume — that is
+  raptor_usd_desk on Binance (~$560). Stay on RLUSD-XRP; hop only on own
+  hourly surge ≥300%; convert then quote; reference binance_perpetual XRP-USDT.
+  Patient: widen on thin books, never force churn; size to observed purse ≤240.
 created_by: 0
 created_at: '2026-07-28T00:00:00Z'
 ---
-
 # RLUSD XRP Maker
 
 > **Identity, edge and risk philosophy live in AGENT.md.** This playbook is the
 > exact procedure for every tick — issuers, routine calls, sizes, exits.
 > Follow it. Routines emit the numbers; you apply one verdict.
+
+## Dual-arm capital (race)
+
+| Arm | Capital | Where | Job |
+|---|---|---|---|
+| **P&L (this loop)** | **$240 (30%)** | XRPL `RLUSD-XRP` harvest MM | Spread / inventory — patient |
+| **Volume** | **$560 (70%)** | Binance USD1 `raptor_usd_desk` | Race volume only |
+
+Do **not** put the $800 envelope on XRPL for volume. `hunting_mode: harvest`,
+`total_amount_quote: 240`, `toehold_quote: 80`. The stable desk owns churn.
+Cup-era `race` / $800 is **off** for dual-arm finals unless an organizer
+explicitly flips `hunting_mode: race` and restores 800.
+
+**Patient P&L rules**
+- Quote the **toehold** only; idle cash stays off (harvest).
+- Do not hop for volume theater — CURIOUS still requires ≥300% own hourly surge.
+- Widen ±1% on non-viable books; never kill the switch to reprint size.
+- Rebalance cost-gated ≤25 bps, max **$25** per step on this sleeve.
+- Size free balance only; never upsert controller above planner live size.
+- Drawdown pause **12%** on the $240 book; shutdown 20%.
+
 
 Read every runtime value from `[CURRENT CONFIG]`. Never hardcode a venue in a
 routine. Connector is `xrpl`. Bot name **must** stay under the ownership
@@ -98,9 +129,10 @@ namespace `delta_raptor-rlusd_xrp_maker` (do not use `rlusd-xrp-maker`).
   `xrpl_mm_deploy` skill). Fall back to executors only after a real controller
   failure — then journal why. Do **not** clear `bot_name` to pick executor mode
   unless that failure is recorded.
-- Live size comes from the planner (`controller_total_amount_quote`). Race (the
-  Cup default) quotes the full observed purse up to the `total_amount_quote: 800`
-  ceiling; harvest quotes only the toehold.
+- Live size comes from the planner (`controller_total_amount_quote`). Dual-arm
+  default is **harvest**: quotes only the toehold (≤ `toehold_quote: 80`) up to
+  the `total_amount_quote: 240` / observed-purse ceiling. Full-envelope race is
+  off — volume is `raptor_usd_desk`.
 
 ## Startup guard — notSynced
 
@@ -130,7 +162,7 @@ manage_routines(action="run", name="xrpl_mm_hunt_scorer",
                      "fills_window": <own fills last 30min>, "window_sec": 1800,
                      "volume_change_pct": <hourly volume change %>}, ...],
                     "core_pair": "RLUSD-XRP",
-                    "total_capital_quote": <wallet 800>,
+                    "total_capital_quote": <wallet 240 P&L sleeve>,
                     "toehold_quote": <config>,
                     "hunting_mode": <config>,
                     "curious_surge_pct": <config>,
@@ -163,7 +195,7 @@ manage_routines(action="run", name="xrpl_mm_quote_planner",
                         "requote_interval_sec": <executor_refresh_time in controller mode,
                                                  else frequency_sec>,
                         "levels_per_side": <from config>,
-                        "total_amount_quote": <planner live — harvest $100, never wallet $800>,
+                        "total_amount_quote": <planner live — harvest toehold ≤$80, never wallet $240+>,
                         "hunting_mode": <config>,
                         "wallet_ceiling_quote": <config total_capital_quote>,
                         "toehold_quote": <config>,
@@ -184,7 +216,7 @@ Tick #1/#2 `notSynced` / `status: ERROR` → startup guard (HOLD).
 - Planner `hold: true` → **HOLD** this tick.
 - `viable: false` (correct requote interval) → **WIDEN**: one level at
   `widen_distance_pct` (1%) from mid, sized at **live perch**. Harvest: do **not**
-  rest $800. Controller: `widen_spread_fraction`.
+  rest the $240 sleeve. Controller: `widen_spread_fraction`.
   Executor fallback: one LIMIT_MAKER BUY at `widen_bid` until SELL is armed.
   **Do not kill the switch.**
 - Empty / unavailable book → HOLD (no quotes at all). That is the only hard stop.
@@ -251,12 +283,14 @@ Execution failures → `category="execution"`.
 
 - Free balance only (1 XRP + 0.2 × open offers).
 - Harvest live = min(`toehold_quote`, 20% of **observed XRPL purse**, free-balance room).
-  Cup $100 / $800 are **ceilings**. An organizer ~$85 book lives ~$17, not $100, not $800.
+  Dual-arm ceilings: toehold **$80** / sleeve **$240**. An organizer ~$85 book lives
+  ~$17, not $80, not $240. Volume capital is **not** on this wallet.
 - If available XRP cannot cover reserve + a BUY, harvest **SELLs RLUSD** it already holds
   (one-sided seed). Do not BUY-blind into negative available XRP.
 - `hold: true` → **HOLD**. Do not upsert a controller.
 - **Never upsert `delta_raptor_pmm.total_amount_quote` above planner `controller_total_amount_quote`.**
-- Race live = min(envelope, observed purse). Organizer smoke stays **harvest**.
+- Harvest live = min(toehold, observed purse, free balance). Do not race the sleeve.
+- Flip to Cup race only if ordered: `hunting_mode: race`, totals 800 — not dual-arm default.
 
 ## Guardrails
 
@@ -275,7 +309,8 @@ Execution failures → `category="execution"`.
   resting order sits > 0.5% from the current quote price (checked every 60s).
   Do not retune the controller just to chase price.
 - Retunes update **both** controller stores. Executors pass `controller_id="{agent_id}"`.
-- Declare `max_global_drawdown_quote` on every deploy.
+- Declare `max_global_drawdown_quote` on every deploy (P&L sleeve scale, not $800).
+- Volume arm is **out of band** for this loop — never start `raptor_usd_desk` from here.
 
 ## Errors
 

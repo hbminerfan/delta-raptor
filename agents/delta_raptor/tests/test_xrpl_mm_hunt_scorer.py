@@ -198,5 +198,5 @@ class TestConfig:
         assert c.hunt_slice_pct == 0.15
         assert c.fill_rate_ref == pytest.approx(1 / 60)
         assert c.hunting_mode == "harvest"
-        assert c.toehold_quote == 100.0
+        assert c.toehold_quote == 80.0
         assert c.curious_surge_pct == 300.0

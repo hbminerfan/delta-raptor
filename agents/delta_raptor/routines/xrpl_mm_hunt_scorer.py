@@ -66,7 +66,7 @@ class Config(BaseModel):
         description="How strongly a 100% hourly volume surge boosts the score (x1 multiplier at weight 1.0)",
     )
     total_capital_quote: float = Field(
-        default=800.0, description="Total capital to allocate across huntable pairs (competition: $800)"
+        default=240.0, description="P&L sleeve USD to allocate across huntable pairs (dual-arm: $240; volume is separate)"
     )
     min_share_pct: float = Field(
         default=0.0,
@@ -84,7 +84,7 @@ class Config(BaseModel):
         description="race = park the envelope; harvest = park the toehold, idle stays off",
     )
     toehold_quote: float = Field(
-        default=100.0, description="Harvest live USD that a nest hop may move"
+        default=80.0, description="Harvest live USD that a nest hop may move"
     )
     curious_surge_pct: float = Field(
         default=300.0,

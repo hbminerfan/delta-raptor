@@ -40,7 +40,7 @@ async def pin_nest_sheet(
     text: str,
     kpis: list[tuple[str, str]] | None = None,
     heading: str = "NEST / PLAN",
-    blurb: str = "Harvest perch. Cup $100/$800 are ceilings.",
+    blurb: str = "Harvest perch. Dual-arm $80/$240 ceilings (vol desk separate).",
 ) -> None:
     try:
         from condor.reports import ReportBuilder
