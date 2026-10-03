@@ -87,7 +87,7 @@ created_at: '2026-07-28T00:00:00Z'
 | Arm | Capital | Where | Job |
 |---|---|---|---|
 | **P&L (this loop)** | **$240 (30%)** | XRPL `RLUSD-XRP` harvest MM | Spread / inventory — patient |
-| **Volume** | **$560 (70%)** | Binance USD1 `raptor_usd_desk` | Race volume only |
+| **Volume** | **$560 (70%)** | Binance `raptor_usd_desk` (USD1-USDC, fallback USD1-USDT) | Race volume only |
 
 Do **not** put the $800 envelope on XRPL for volume. `hunting_mode: harvest`,
 `total_amount_quote: 240`, `toehold_quote: 80`. The stable desk owns churn.

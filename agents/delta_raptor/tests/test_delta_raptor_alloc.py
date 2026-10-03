@@ -34,7 +34,7 @@ def test_allocation_split_keys():
 
 
 def test_entry_stop_loss_is_10pct_of_full_800_not_pnl_sleeve():
-    from routines._delta_raptor_alloc import (
+    from agents.delta_raptor.routines._delta_raptor_alloc import (
         ENTRY_STOP_LOSS_PCT,
         ENTRY_STOP_LOSS_USD,
         PNL_ARM_USD,
@@ -56,7 +56,7 @@ def test_entry_stop_loss_is_10pct_of_full_800_not_pnl_sleeve():
 
 
 def test_allocation_split_exposes_entry_stop():
-    from routines._delta_raptor_alloc import allocation_split
+    from agents.delta_raptor.routines._delta_raptor_alloc import allocation_split
     s = allocation_split()
     assert s["entry_stop_loss_usd"] == 80.0
     assert s["entry_stop_loss_pct"] == 0.10

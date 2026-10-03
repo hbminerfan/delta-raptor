@@ -23,8 +23,9 @@ one tick later with a crossing limit of the same size, so this desk keeps
 generating turnover continuously in whichever direction it is currently
 leaning, rather than waiting for the book to come to it.
 
-Capital note: dual-arm **70% / ~$560** of the entry's $800 competition
-capital (volume arm), leaving **~$240 (30%)** for the native XRPL P&L harvest loop.
+Capital note (split-book): **70% / ~$560** of the entry's $800 competition
+capital (volume sleeve), leaving **~$240 (30%)** for the native XRPL P&L harvest loop.
+Primary pair USD1-USDC; fallback USD1-USDT if the primary book is dead/off-peg.
 Entry stop-loss is **$80 (10% of $800 total)**, shared ceiling — not 10% of this arm only.
 """
 from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal
@@ -45,7 +46,9 @@ class RaptorUsdDeskConfig(ControllerConfigBase):
     controller_name: str = "raptor_usd_desk"
 
     connector_name: str = Field("binance")
-    trading_pair: str = Field("USD1-USDC")
+    trading_pair: str = Field("USD1-USDC", description="Primary zero-fee stable pair.")
+    fallback_pair: str = Field("USD1-USDT", description="Failover if primary book is dead/off-peg.")
+    use_pair_fallback: bool = Field(True, json_schema_extra={"is_updatable": True})
 
     volume_goal_usd: Decimal = Field(Decimal("1200000"), json_schema_extra={"is_updatable": True})
     goal_window_s: int = Field(172800)
@@ -85,7 +88,11 @@ class RaptorUsdDeskConfig(ControllerConfigBase):
     tick_interval_s: float = Field(1.0)
 
     def update_markets(self, markets: MarketDict) -> MarketDict:
-        markets[self.connector_name] = markets.get(self.connector_name, set()) | {self.trading_pair}
+        pairs = {self.trading_pair}
+        fb = getattr(self, "fallback_pair", None)
+        if fb:
+            pairs.add(fb)
+        markets[self.connector_name] = markets.get(self.connector_name, set()) | pairs
         return markets
 
 
@@ -125,6 +132,30 @@ class RaptorUsdDeskController(ControllerBase):
         conn = self.market_data_provider.get_connector(self.config.connector_name)
         reader = getattr(conn, "get_available_balance", None) or conn.get_balance
         return Decimal(str(reader(base))), Decimal(str(reader(quote)))
+
+    def _book_alive(self) -> bool:
+        try:
+            bid = self._px(PriceType.BestBid)
+            ask = self._px(PriceType.BestAsk)
+            return bid > 0 and ask > 0 and ask >= bid
+        except Exception:
+            return False
+
+    def _ensure_pair(self) -> None:
+        """Prefer USD1-USDC; fall over to USD1-USDT when the primary book is dead/off-peg."""
+        c = self.config
+        if not getattr(c, "use_pair_fallback", True):
+            return
+        fb = (getattr(c, "fallback_pair", None) or "").strip()
+        if not fb or fb == c.trading_pair:
+            return
+        if self._book_alive():
+            mid = self._px(PriceType.MidPrice)
+            if c.peg_floor <= mid <= c.peg_ceiling:
+                return
+        prev = c.trading_pair
+        c.trading_pair = fb
+        self.logger().warning(f"[{c.id}] pair failover {prev} -> {fb}")
 
     def _tick_size(self) -> Decimal:
         try:
@@ -171,6 +202,7 @@ class RaptorUsdDeskController(ControllerBase):
         return at(self._pace_anchor, now)
 
     async def update_processed_data(self):
+        self._ensure_pair()
         now = self.market_data_provider.time()
         if self._genesis_ts is None:
             self._genesis_ts = now
