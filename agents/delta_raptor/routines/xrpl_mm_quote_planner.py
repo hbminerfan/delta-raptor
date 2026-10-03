@@ -366,13 +366,25 @@ async def run(config: Config, context: ContextTypes.DEFAULT_TYPE) -> str:
             purse_note = f"purse: portfolio unread ({exc}) — Cup ceilings only"
     if observed < 0:
         observed = config.wallet_ceiling_quote
+    # Envelope = P&L sleeve ceiling. Prefer explicit wallet_ceiling; fall back to
+    # total_amount_quote so a mis-set ceiling of 0 cannot zero the book.
+    envelope = float(config.wallet_ceiling_quote or 0.0)
+    if envelope <= 0:
+        envelope = float(config.total_amount_quote or 0.0)
+    # Competition dual-arm: toehold defaults 80; never leave toehold at 0.
+    toehold = float(config.toehold_quote or 0.0)
+    if toehold <= 0:
+        toehold = min(80.0, envelope) if envelope > 0 else 80.0
+    # If agent passed observed == tiny sleeve only, portfolio refresh may have been
+    # skipped when rooms were also provided. Frac-unstick in compose_perch covers
+    # hold; still prefer a real observed wallet when we have one above.
     perch = compose_perch(
         config.hunting_mode,
         wallet=observed,
-        toehold=config.toehold_quote,
+        toehold=toehold,
         inv_sellable_usd=sell_room or 0.0,
         race_levels=config.levels_per_side,
-        envelope=config.wallet_ceiling_quote,
+        envelope=envelope if envelope > 0 else None,
         buy_room_usd=buy_room,
         sell_room_usd=sell_room,
     )

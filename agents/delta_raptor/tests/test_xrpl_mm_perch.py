@@ -98,3 +98,74 @@ class TestXrplPurse:
         assert p["buy_room_usd"] == 0.0
         assert p["sell_room_usd"] == pytest.approx(67.6, rel=0.02)
         assert p["wallet_usd"] == pytest.approx(85.8, rel=0.02)
+
+
+class TestHarvestCompetitionUnstick:
+    """Competition / SIT must quote when toehold fits — frac must not permanent-HOLD."""
+
+    def test_competition_dual_arm_toehold_not_stuck(self):
+        # observed XRPL bag large, sleeve $240, toehold $80
+        p = compose_perch(
+            "harvest",
+            wallet=850.0,
+            toehold=80.0,
+            envelope=240.0,
+            buy_room_usd=26.0,
+            sell_room_usd=830.0,
+        )
+        assert p.hold is False
+        assert p.live == pytest.approx(80.0)
+        assert p.buy_live == pytest.approx(26.0) or p.buy_live == pytest.approx(80.0) or p.live >= 5
+
+    def test_competition_live_capped_by_buy_room_still_quotes(self):
+        p = compose_perch(
+            "harvest",
+            wallet=850.0,
+            toehold=80.0,
+            envelope=240.0,
+            buy_room_usd=26.0,
+            sell_room_usd=830.0,
+        )
+        assert p.hold is False
+        assert p.live >= 5.0
+        assert p.buy_live == pytest.approx(26.0)
+        # sell can also be live-sized
+        assert p.sell_live >= 5.0
+
+    def test_sleeve_as_observed_still_arms_toehold(self):
+        # Agent mistake: observed_wallet_usd == sleeve == 240, toehold 80
+        p = compose_perch(
+            "harvest",
+            wallet=240.0,
+            toehold=80.0,
+            envelope=240.0,
+            buy_room_usd=26.0,
+            sell_room_usd=830.0,
+        )
+        assert p.hold is False
+        assert p.live >= 5.0
+
+    def test_sit_ten_dollar_sleeve_not_stuck(self):
+        # SIT $10 envelope used to do live=min(10, 10*0.2)=2 < min_live → HOLD forever
+        p = compose_perch(
+            "harvest",
+            wallet=850.0,
+            toehold=10.0,
+            envelope=10.0,
+            buy_room_usd=26.0,
+            sell_room_usd=830.0,
+        )
+        assert p.hold is False
+        assert p.live == pytest.approx(10.0)
+
+    def test_sit_sleeve_passed_as_observed_not_stuck(self):
+        p = compose_perch(
+            "harvest",
+            wallet=10.0,
+            toehold=10.0,
+            envelope=10.0,
+            buy_room_usd=26.0,
+            sell_room_usd=830.0,
+        )
+        assert p.hold is False
+        assert p.live == pytest.approx(10.0)

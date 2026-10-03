@@ -49,3 +49,16 @@ Loop defaults (P&L arm):
 ## Optional race-only (legacy)
 
 If organizers explicitly want single-arm XRPL race: set `hunting_mode: race`, `total_amount_quote: 800`, leave `raptor_usd_desk` stopped, and fund XRPL only. That is **not** the dual-arm finals package.
+
+
+## Entry stop-loss (full envelope)
+
+| Rule | Value |
+|---|---|
+| Basis | **Full $800** race capital (both arms) |
+| Stop-loss | **10% → $80 USDT** absolute loss |
+| Not | 10% of P&L sleeve only ($24 on $240) |
+| Volume desk | `raptor_usd_desk.drawdown_ceiling_usd = 80` |
+| P&L deploy | `max_global_drawdown_quote = 80` |
+
+Constants: `ENTRY_STOP_LOSS_PCT` / `ENTRY_STOP_LOSS_USD` in `routines/_delta_raptor_alloc.py`.

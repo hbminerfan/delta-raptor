@@ -4,6 +4,8 @@ Drop-in Builders Cup entry. **Does not modify Condor engine or any other agent.*
 
 ## Organizer capital ($800) — read first
 
+**Entry stop-loss: $80 (10% of $800 total), not 10% of the $240 P&L arm.**
+
 | Arm | Amount | Where | Component |
 |---|---|---|---|
 | **Volume** | **~$560 (70%)** | Binance USD1 stable desk | `controllers/generic/raptor_usd_desk.py` |

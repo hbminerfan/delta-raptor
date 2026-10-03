@@ -80,7 +80,8 @@ manage_bots(action="deploy", ...)
 ```
 
 Deploy under config `bot_name` (`delta_raptor-rlusd_xrp_maker`) — ownership namespace.
-Set `max_global_drawdown_quote` in the quote asset on every deploy.
+Set `max_global_drawdown_quote: 80` on every deploy (**10% of full $800 entry** = $80 loss trigger — **not** 10% of the $240 P&L sleeve).
+Volume arm uses the same dollar stop: `raptor_usd_desk.drawdown_ceiling_usd: 80`.
 
 **Treat as failed → fall through to executors only when:**
 - upsert rejects the config

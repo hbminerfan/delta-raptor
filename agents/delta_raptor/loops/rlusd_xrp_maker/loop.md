@@ -17,7 +17,7 @@ default_config:
   xrpl_pair: RLUSD-XRP
   reference_connector: binance_perpetual
   reference_pair: XRP-USDT
-  levels_per_side: 2
+  levels_per_side: 1
   executor_refresh_time: 300
   controller_name: delta_raptor_pmm
   drift_check_interval: 60
@@ -34,6 +34,7 @@ default_config:
   max_rebalance_amount_quote: 25
   rebalance_progressive_frac: 0.5
   total_capital_quote: 240
+  wallet_ceiling_quote: 240
   min_share_pct: 0
   full_shift_dominance: 3.0
   volume_weight: 0.5
@@ -49,15 +50,23 @@ default_config:
   hedge_connector: binance_perpetual
   hedge_pair: XRP-USDT
   dual_arm: true
+  test_mode: false
+  sit_micro: false
   pnl_arm_usd: 240
   volume_arm_usd: 560
   race_envelope_usd: 800
   volume_controller: raptor_usd_desk
   risk_limits:
     max_position_size_quote: 240
-    max_open_executors: 6
-    max_drawdown_pct: 12
-    shutdown_drawdown_pct: 20
+    max_open_executors: 2
+    # Entry stop = 10% of FULL $800 envelope -> $80 (NOT 10%/12% of $240 P&L sleeve).
+    entry_stop_loss_pct: 10
+    entry_stop_loss_usd: 80
+    entry_stop_basis_usd: 800
+    max_drawdown_pct: 10
+    max_global_drawdown_quote: 80
+    shutdown_drawdown_pct: 15
+    shutdown_drawdown_quote: 120
 default_trading_context: >-
   P&L arm (~$240 of $800). Trade RLUSD-XRP on xrpl in harvest mode (toehold
   ~$80, idle off). Do NOT race the full envelope for volume — that is
@@ -91,7 +100,8 @@ explicitly flips `hunting_mode: race` and restores 800.
 - Widen ±1% on non-viable books; never kill the switch to reprint size.
 - Rebalance cost-gated ≤25 bps, max **$25** per step on this sleeve.
 - Size free balance only; never upsert controller above planner live size.
-- Drawdown pause **12%** on the $240 book; shutdown 20%.
+- **Entry stop-loss $80** = **10% of full $800** race capital (volume+P&L), **not** 10% of the $240 P&L sleeve (~$24). Pause/flatten when combined or either-arm mark loss reaches **$80**. Shutdown soft cap **$120** (15% of $800).
+- On every `delta_raptor_pmm` deploy set `max_global_drawdown_quote: 80` (same dollar stop). Volume desk `drawdown_ceiling_usd: 80`.
 
 
 Read every runtime value from `[CURRENT CONFIG]`. Never hardcode a venue in a
@@ -162,7 +172,8 @@ manage_routines(action="run", name="xrpl_mm_hunt_scorer",
                      "fills_window": <own fills last 30min>, "window_sec": 1800,
                      "volume_change_pct": <hourly volume change %>}, ...],
                     "core_pair": "RLUSD-XRP",
-                    "total_capital_quote": <wallet 240 P&L sleeve>,
+                    "total_capital_quote": 240,
+                    "wallet_ceiling_quote": 240,
                     "toehold_quote": <config>,
                     "hunting_mode": <config>,
                     "curious_surge_pct": <config>,
@@ -282,14 +293,17 @@ Execution failures → `category="execution"`.
 ## Sizing
 
 - Free balance only (1 XRP + 0.2 × open offers).
-- Harvest live = min(`toehold_quote`, 20% of **observed XRPL purse**, free-balance room).
-  Dual-arm ceilings: toehold **$80** / sleeve **$240**. An organizer ~$85 book lives
-  ~$17, not $80, not $240. Volume capital is **not** on this wallet.
+- Harvest live = min(`toehold_quote`, P&L sleeve, free-balance room), with a
+  20% **observed-wallet** soft cap that **must not** force HOLD when the configured
+  toehold already fits the sleeve (≥ $5 min-live). Competition: toehold **$80** /
+  sleeve **$240** → live **$80** when XRP/RLUSD rooms allow. Small ~$85 books still
+  shrink via 20% (~$17). Volume capital is **not** on this wallet.
+- **Never set SIT totals (10/10) for the live competition period.** `sit_micro` / `test_mode` only for micro-tests.
 - If available XRP cannot cover reserve + a BUY, harvest **SELLs RLUSD** it already holds
   (one-sided seed). Do not BUY-blind into negative available XRP.
 - `hold: true` → **HOLD**. Do not upsert a controller.
 - **Never upsert `delta_raptor_pmm.total_amount_quote` above planner `controller_total_amount_quote`.**
-- Harvest live = min(toehold, observed purse, free balance). Do not race the sleeve.
+- Harvest live = min(toehold $80, sleeve $240, rooms); frac unsticks viable toeholds. Do not race the sleeve.
 - Flip to Cup race only if ordered: `hunting_mode: race`, totals 800 — not dual-arm default.
 
 ## Guardrails
@@ -309,7 +323,7 @@ Execution failures → `category="execution"`.
   resting order sits > 0.5% from the current quote price (checked every 60s).
   Do not retune the controller just to chase price.
 - Retunes update **both** controller stores. Executors pass `controller_id="{agent_id}"`.
-- Declare `max_global_drawdown_quote` on every deploy (P&L sleeve scale, not $800).
+- Declare `max_global_drawdown_quote: 80` on every deploy (**10% of $800 entry**, not 10% of the $240 P&L sleeve).
 - Volume arm is **out of band** for this loop — never start `raptor_usd_desk` from here.
 
 ## Errors

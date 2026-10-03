@@ -33,8 +33,10 @@ _RACE_ALIASES = {
     "envelope",
 }
 
-# Harvest never parks more than this slice of the *observed* purse on tick 0.
-# Cup $800 → $100 toehold still wins (min(100, 160)). $85 → ~$17.
+# Harvest frac caps live vs the *observed* XRPL wallet (not the sleeve ceiling alone).
+# Cup $800 → $100 toehold still wins (min(100, 160)). $85 book → ~$17.
+# Critical: never let envelope*frac kill a viable toehold (SIT $10 or competition
+# agent passing sleeve-as-observed). If min(toehold, sleeve) >= MIN_LIVE, quote.
 HARVEST_FRAC = 0.20
 MIN_LIVE_USD = 5.0
 
@@ -189,10 +191,24 @@ def compose_perch(
             ),
         )
 
-    slice_cap = purse * frac if frac > 0 else purse
-    live = min(toehold, purse, slice_cap if slice_cap > 0 else toehold)
+    # Sleeve purse = min(observed, envelope). Frac applies to OBSERVED wallet so a
+    # large XRPL bag cannot put more than 20% live. Do NOT compute frac from the
+    # envelope-capped purse alone — that turns a $10 SIT sleeve (or sleeve passed
+    # as observed) into live=$2 and permanent HOLD under MIN_LIVE.
+    # If the configured toehold already fits the sleeve at >= min_live, keep it
+    # quotable even when frac*observed would undershoot the floor.
+    raw_live = min(toehold, purse) if purse else 0.0
+    if frac > 0 and observed > 0:
+        frac_cap = observed * frac
+        shrunk = min(raw_live, frac_cap)
+        if shrunk + 1e-12 < min_live and raw_live + 1e-12 >= min_live:
+            live = raw_live
+        else:
+            live = shrunk
+    else:
+        live = raw_live
     buy_want = live
-    sell_want = min(live, sell_cap)
+    sell_want = min(live, sell_cap) if sell_cap is not None else live
 
     if buy_room_usd is not None:
         buy_want = min(buy_want, _pos(buy_room_usd))
@@ -222,7 +238,7 @@ def compose_perch(
             levels_per_side=1,
             one_sided=True,
             hold=True,
-            note="HOLD: purse/rooms below min live — do not quote",
+            note="HOLD: after rooms, live below min_live — do not quote",
         )
     return Perch(
         mode=HARVEST,

@@ -25,6 +25,7 @@ leaning, rather than waiting for the book to come to it.
 
 Capital note: dual-arm **70% / ~$560** of the entry's $800 competition
 capital (volume arm), leaving **~$240 (30%)** for the native XRPL P&L harvest loop.
+Entry stop-loss is **$80 (10% of $800 total)**, shared ceiling — not 10% of this arm only.
 """
 from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal
 from typing import Dict, List, Optional, Tuple
@@ -68,7 +69,12 @@ class RaptorUsdDeskConfig(ControllerConfigBase):
                     "clip once it has sat unfilled this long.")
 
     fee_ceiling_bp: Decimal = Field(Decimal("0.5"), json_schema_extra={"is_updatable": True})
-    drawdown_ceiling_usd: Decimal = Field(Decimal("12"), json_schema_extra={"is_updatable": True})
+    drawdown_ceiling_usd: Decimal = Field(
+        Decimal("80"),
+        json_schema_extra={"is_updatable": True},
+        description="Entry stop: 10% of full $800 race envelope ($80), NOT 10% of volume sleeve. "
+                    "Trip when desk equity falls $80 from genesis value.",
+    )
     peg_floor: Decimal = Field(Decimal("0.998"), json_schema_extra={"is_updatable": True})
     peg_ceiling: Decimal = Field(Decimal("1.002"), json_schema_extra={"is_updatable": True})
 

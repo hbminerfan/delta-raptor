@@ -31,3 +31,32 @@ def test_allocation_split_keys():
     assert "560" in ORGANIZER_BLURB and "240" in ORGANIZER_BLURB
     table = organizer_funding_table_md()
     assert "$560" in table and "$240" in table and "$800" in table
+
+
+def test_entry_stop_loss_is_10pct_of_full_800_not_pnl_sleeve():
+    from routines._delta_raptor_alloc import (
+        ENTRY_STOP_LOSS_PCT,
+        ENTRY_STOP_LOSS_USD,
+        PNL_ARM_USD,
+        RACE_ENVELOPE_USD,
+        entry_stop_loss_usd,
+        pnl_max_global_drawdown_quote,
+        volume_desk_drawdown_ceiling_usd,
+    )
+    assert RACE_ENVELOPE_USD == 800.0
+    assert ENTRY_STOP_LOSS_PCT == 0.10
+    assert ENTRY_STOP_LOSS_USD == 80.0
+    assert entry_stop_loss_usd() == 80.0
+    assert entry_stop_loss_usd(800, 0.10) == 80.0
+    # Must NOT equal 10% of P&L sleeve alone
+    assert ENTRY_STOP_LOSS_USD != PNL_ARM_USD * 0.10
+    assert ENTRY_STOP_LOSS_USD == RACE_ENVELOPE_USD * 0.10
+    assert volume_desk_drawdown_ceiling_usd() == 80.0
+    assert pnl_max_global_drawdown_quote() == 80.0
+
+
+def test_allocation_split_exposes_entry_stop():
+    from routines._delta_raptor_alloc import allocation_split
+    s = allocation_split()
+    assert s["entry_stop_loss_usd"] == 80.0
+    assert s["entry_stop_loss_pct"] == 0.10

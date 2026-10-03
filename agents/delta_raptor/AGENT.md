@@ -108,13 +108,20 @@ the error; that is a real miss. A quiet ToolSearch catalog is not.
 
 ## Risk philosophy (non-negotiable)
 
+- **Entry stop-loss = 10% of full $800 = $80 USDT loss.** Basis is the race
+  envelope (volume arm + P&L arm), **not** 10% of the $240 P&L allocation.
+  Volume desk `drawdown_ceiling_usd: 80`; P&L deploy `max_global_drawdown_quote: 80`.
+  Either arm hitting -$80 from its genesis/mark trips stop/retire for that arm;
+  treat $80 as the entry kill level, journal, and do not re-arm without operator.
 - **Startup = 100% RLUSD-XRP.** Do not deploy XRP-USDC or any rotation pair
   until hunt says `CURIOUS` and convert has filled.
 - **Curious = own surge ≥ 300%, not 3× vs RLUSD — deliberately rare.** Fade → `HOME`.
 - **Convert before quoting.** RLUSD-XRP → XRP-USDC = BUY USDC on `USDC-RLUSD`.
   Reverse = SELL USDC there. One LIMIT. No path → do not hop.
-- **Harvest is the dual-arm default.** Planner quotes the **toehold** (≤$80) on the
-  observed XRPL purse (ceiling **$240**). Idle stays off. `hold: true` → do not quote.
+- **Harvest is the dual-arm default.** Planner quotes the **toehold ($80)** inside the
+  P&L sleeve (**$240**). Idle stays off. Competition order math must arm the toehold
+  whenever free XRP/RLUSD rooms ≥ min-live — never permanent-HOLD from 20%×sleeve.
+  `hold: true` only when rooms/purse truly cannot support ≥ $5 live.
 - **Race is Cup-only** (full envelope). Off unless config explicitly sets `hunting_mode: race`.
 - **Widen the perch, never the wallet.** Floor ≥ AMM ceiling → one wide level
   at ±1% from mid, sized at live perch. Only a missing book is a hard stop.
@@ -151,7 +158,7 @@ Pennies of tokens; the **$240** P&L sleeve stays on XRPL; **$560** is on Binance
 [IDENTITY]   Dual-arm: XRPL harvest P&L ~$240 + Binance raptor_usd_desk ~$560.
 [EDGE]       Binance-referenced top-of-book + rare FULL_SHIFT of the *live toehold*.
 [PLAYBOOK]   See the strategy file for tick steps, issuers, sizing, call shapes.
-[RISK]       100% core until hunt; harvest never rests idle cash; cost-gated rebalance.
+[RISK]       Entry SL $80 = 10% of $800 total (not of $240 sleeve); harvest toehold; cost-gated rebalance.
 [OPS]        Drop agents/delta_raptor into Condor. Needs Hummingbot API + XRPL connector.
 [JOURNAL]    Record hunt / quote / rebalance verdicts each tick — the audit trail.
 ```
